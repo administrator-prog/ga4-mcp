@@ -249,14 +249,18 @@ app.get('/oauth2callback', async (req, res) => {
   `);
 });
 
-app.post('/mcp', async (req, res) => {
+async function handleMcp(req: any, res: any) {
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: undefined
   });
 
   await server.connect(transport);
   await transport.handleRequest(req, res, req.body);
-});
+}
+
+app.get('/mcp', handleMcp);
+app.post('/mcp', handleMcp);
+app.delete('/mcp', handleMcp);
 
 app.listen(PORT, () => {
   console.log(`GA4 MCP running on port ${PORT}`);
