@@ -52,6 +52,7 @@ function text(data: any) {
   };
 }
 
+function createServer() {
 const server = new McpServer({
   name: 'ga4-mcp',
   version: '1.0.0'
@@ -249,7 +250,11 @@ app.get('/oauth2callback', async (req, res) => {
   `);
 });
 
+return server;
+}
+
 async function handleMcp(req: any, res: any) {
+  const server = createServer();
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: undefined
   });
