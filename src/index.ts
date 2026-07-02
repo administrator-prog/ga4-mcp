@@ -226,7 +226,7 @@ app.get('/', (_req, res) => {
 
 app.get('/auth/google', (_req, res) => {
   const client = oauthClient();
-  const url = client.generateAuthUrl({
+  console.log('REDIRECT URI:', GOOGLE_REDIRECT_URI);\n  console.log('CLIENT ID:', GOOGLE_CLIENT_ID);\n  const url = client.generateAuthUrl({
     access_type: 'offline',
     prompt: 'consent',
     scope: [
