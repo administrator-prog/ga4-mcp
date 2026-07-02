@@ -221,6 +221,221 @@ server.tool(
   }
 );
 
+
+server.tool(
+  'analyse_organic_performance',
+  'Analyse organic traffic quality, engagement and conversions for a GA4 property.',
+  {
+    propertyId: z.string(),
+    startDate: z.string(),
+    endDate: z.string(),
+    limit: z.number().default(25)
+  },
+  async ({ propertyId, startDate, endDate, limit }) => {
+    const ga = await gaClient();
+    const res = await ga.properties.runReport({
+      property: `properties/${propertyId}`,
+      requestBody: {
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [{ name: 'landingPagePlusQueryString' }, { name: 'deviceCategory' }],
+        metrics: [
+          { name: 'sessions' },
+          { name: 'totalUsers' },
+          { name: 'engagedSessions' },
+          { name: 'engagementRate' },
+          { name: 'averageSessionDuration' },
+          { name: 'screenPageViews' },
+          { name: 'conversions' }
+        ],
+        dimensionFilter: {
+          filter: {
+            fieldName: 'sessionDefaultChannelGroup',
+            stringFilter: { matchType: 'EXACT', value: 'Organic Search' }
+          }
+        },
+        orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+        limit: String(limit)
+      }
+    });
+    return text(res.data);
+  }
+);
+
+server.tool(
+  'analyse_landing_page',
+  'Diagnose behaviour and conversion performance for one landing page.',
+  {
+    propertyId: z.string(),
+    pagePath: z.string().describe('Example: /property/for-sale/'),
+    startDate: z.string(),
+    endDate: z.string()
+  },
+  async ({ propertyId, pagePath, startDate, endDate }) => {
+    const ga = await gaClient();
+    const res = await ga.properties.runReport({
+      property: `properties/${propertyId}`,
+      requestBody: {
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [{ name: 'landingPagePlusQueryString' }, { name: 'sessionDefaultChannelGroup' }, { name: 'deviceCategory' }],
+        metrics: [
+          { name: 'sessions' },
+          { name: 'totalUsers' },
+          { name: 'engagedSessions' },
+          { name: 'engagementRate' },
+          { name: 'averageSessionDuration' },
+          { name: 'screenPageViews' },
+          { name: 'conversions' },
+          { name: 'eventCount' }
+        ],
+        dimensionFilter: {
+          filter: {
+            fieldName: 'landingPagePlusQueryString',
+            stringFilter: { matchType: 'CONTAINS', value: pagePath }
+          }
+        },
+        limit: '50'
+      }
+    });
+    return text(res.data);
+  }
+);
+
+server.tool(
+  'analyse_conversion_drop',
+  'Compare conversion performance between two date ranges and show where the drop may be coming from.',
+  {
+    propertyId: z.string(),
+    currentStart: z.string(),
+    currentEnd: z.string(),
+    previousStart: z.string(),
+    previousEnd: z.string(),
+    channel: z.string().default('Organic Search')
+  },
+  async ({ propertyId, currentStart, currentEnd, previousStart, previousEnd, channel }) => {
+    const ga = await gaClient();
+    const res = await ga.properties.runReport({
+      property: `properties/${propertyId}`,
+      requestBody: {
+        dateRanges: [
+          { name: 'current', startDate: currentStart, endDate: currentEnd },
+          { name: 'previous', startDate: previousStart, endDate: previousEnd }
+        ],
+        dimensions: [{ name: 'landingPagePlusQueryString' }, { name: 'deviceCategory' }],
+        metrics: [
+          { name: 'sessions' },
+          { name: 'engagedSessions' },
+          { name: 'engagementRate' },
+          { name: 'averageSessionDuration' },
+          { name: 'conversions' }
+        ],
+        dimensionFilter: {
+          filter: {
+            fieldName: 'sessionDefaultChannelGroup',
+            stringFilter: { matchType: 'EXACT', value: channel }
+          }
+        },
+        orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+        limit: '50'
+      }
+    });
+    return text(res.data);
+  }
+);
+
+server.tool(
+  'analyse_devices',
+  'Compare GA4 performance by device category.',
+  {
+    propertyId: z.string(),
+    startDate: z.string(),
+    endDate: z.string(),
+    channel: z.string().optional()
+  },
+  async ({ propertyId, startDate, endDate, channel }) => {
+    const ga = await gaClient();
+    const requestBody: any = {
+      dateRanges: [{ startDate, endDate }],
+      dimensions: [{ name: 'deviceCategory' }],
+      metrics: [
+        { name: 'sessions' },
+        { name: 'totalUsers' },
+        { name: 'engagedSessions' },
+        { name: 'engagementRate' },
+        { name: 'averageSessionDuration' },
+        { name: 'conversions' }
+      ]
+    };
+    if (channel) {
+      requestBody.dimensionFilter = {
+        filter: {
+          fieldName: 'sessionDefaultChannelGroup',
+          stringFilter: { matchType: 'EXACT', value: channel }
+        }
+      };
+    }
+    const res = await ga.properties.runReport({ property: `properties/${propertyId}`, requestBody });
+    return text(res.data);
+  }
+);
+
+server.tool(
+  'analyse_events_by_page',
+  'Show key events and user actions by page.',
+  {
+    propertyId: z.string(),
+    startDate: z.string(),
+    endDate: z.string(),
+    pagePath: z.string().optional(),
+    limit: z.number().default(50)
+  },
+  async ({ propertyId, startDate, endDate, pagePath, limit }) => {
+    const ga = await gaClient();
+    const requestBody: any = {
+      dateRanges: [{ startDate, endDate }],
+      dimensions: [{ name: 'pagePath' }, { name: 'eventName' }],
+      metrics: [{ name: 'eventCount' }, { name: 'totalUsers' }, { name: 'conversions' }],
+      orderBys: [{ metric: { metricName: 'eventCount' }, desc: true }],
+      limit: String(limit)
+    };
+    if (pagePath) {
+      requestBody.dimensionFilter = {
+        filter: {
+          fieldName: 'pagePath',
+          stringFilter: { matchType: 'CONTAINS', value: pagePath }
+        }
+      };
+    }
+    const res = await ga.properties.runReport({ property: `properties/${propertyId}`, requestBody });
+    return text(res.data);
+  }
+);
+
+server.tool(
+  'analyse_site_search',
+  'Analyse internal site search behaviour if GA4 search_term events are tracked.',
+  {
+    propertyId: z.string(),
+    startDate: z.string(),
+    endDate: z.string(),
+    limit: z.number().default(50)
+  },
+  async ({ propertyId, startDate, endDate, limit }) => {
+    const ga = await gaClient();
+    const res = await ga.properties.runReport({
+      property: `properties/${propertyId}`,
+      requestBody: {
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [{ name: 'searchTerm' }],
+        metrics: [{ name: 'eventCount' }, { name: 'totalUsers' }],
+        orderBys: [{ metric: { metricName: 'eventCount' }, desc: true }],
+        limit: String(limit)
+      }
+    });
+    return text(res.data);
+  }
+);
+
+
 app.get('/', (_req, res) => {
   res.send('GA4 MCP running. Use /mcp for Claude. Use /auth/google to generate refresh token.');
 });
